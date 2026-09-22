@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Rep-Right — Live Exercise Analysis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #17070d;
+    --panel: #220a13;
+    --panel-2: #2c0f19;
+    --border: #4a1a2a;
+    --text: #ffffff;
+    --muted: #d3aab6;
+    --maroon: #861F41;
+    --maroon-light: #dd6488;
+    --orange: #E5751F;
+    --on-orange: #340a17;
+    --accent: var(--orange);
+    --good: var(--orange);
+    --warn: var(--maroon-light);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Inter',sans-serif;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+  }
+  header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:14px;
+    padding:18px 24px;
+    border-bottom:1px solid var(--border);
+  }
+  .brand{
+    display:flex;
+    align-items:baseline;
+    gap:10px;
+  }
+  .brand h1{
+    font-family:'Bebas Neue',sans-serif;
+    font-size:30px;
+    letter-spacing:0.5px;
+    margin:0;
+    line-height:1;
+  }
+  .brand span{
+    color:var(--muted);
+    font-size:13px;
+  }
+  nav.tabs{
+    display:flex;
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:3px;
+    gap:2px;
+  }
+  nav.tabs button{
+    font-family:'Inter',sans-serif;
+    font-weight:600;
+    font-size:13.5px;
+    color:var(--muted);
+    background:transparent;
+    border:none;
+    padding:8px 16px;
+    border-radius:6px;
+    cursor:pointer;
+    transition:background .15s ease, color .15s ease;
+  }
+  nav.tabs button.active{
+    background:var(--maroon);
+    color:#ffffff;
+  }
+  nav.tabs button:hover:not(.active){
+    color:var(--text);
+  }
+
+  main{
+    flex:1;
+    display:grid;
+    grid-template-columns:1fr 340px;
+    gap:20px;
+    padding:20px 24px;
+    max-width:1400px;
+    width:100%;
+    margin:0 auto;
+  }
+  @media (max-width:900px){
+    main{grid-template-columns:1fr;}
+  }
+
+  .stage{
+    position:relative;
+    width:100%;
+    aspect-ratio:4/3;
+    background:#000;
+    border:1px solid var(--border);
+    border-radius:10px;
+    overflow:hidden;
+  }
+  .stage video, .stage canvas{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    transform:scaleX(-1);
+  }
+  .stage video{visibility:hidden;}
+
+  .overlay-msg{
+    position:absolute;
+    inset:0;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:16px;
+    text-align:center;
+    padding:24px;
+    background:radial-gradient(circle at center, rgba(20,23,27,.55), rgba(20,23,27,.92));
+    z-index:5;
+  }
+  .overlay-msg h2{
+    font-family:'Bebas Neue',sans-serif;
+    font-size:26px;
+    letter-spacing:.5px;
+    margin:0;
+  }
+  .overlay-msg ul{
+    list-style:none;
+    padding:0;
+    margin:0;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    color:var(--muted);
+    font-size:14px;
+  }
+  .overlay-msg li:before{
+    content:"— ";
+    color:var(--accent);
+  }
+  .start-btn{
+    font-family:'Inter',sans-serif;
+    font-weight:700;
+    font-size:15px;
+    background:var(--orange);
+    color:var(--on-orange);
+    border:none;
+    padding:12px 28px;
+    border-radius:8px;
+    cursor:pointer;
+  }
+  .start-btn:hover{filter:brightness(1.08);}
+  .start-btn:disabled{opacity:.5;cursor:default;}
+
+  .stage-footer{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    margin-top:10px;
+    flex-wrap:wrap;
+  }
+  .status-line{
+    font-size:13px;
+    color:var(--muted);
+  }
+  .status-dot{
+    display:inline-block;
+    width:8px;height:8px;
+    border-radius:50%;
+    background:var(--muted);
+    margin-right:6px;
+  }
+  .status-dot.live{background:var(--good);}
+  .ctrl-buttons{display:flex;gap:8px;}
+  .ctrl-buttons button{
+    font-family:'Inter',sans-serif;
+    font-weight:600;
+    font-size:13px;
+    background:var(--panel);
+    color:var(--text);
+    border:1px solid var(--border);
+    padding:8px 14px;
+    border-radius:7px;
+    cursor:pointer;
+  }
+  .ctrl-buttons button:hover{border-color:#3a4150;}
+  .ctrl-buttons button:disabled{opacity:.4;cursor:default;}
+
+  /* sidebar */
+  aside{
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+  }
+  .card{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:16px 18px;
+  }
+  .card h3{
+    font-size:11.5px;
+    text-transform:uppercase;
+    letter-spacing:1px;
+    color:var(--muted);
+    margin:0 0 10px 0;
+    font-weight:600;
+  }
+  .big-metric{
+    display:flex;
+    align-items:baseline;
+    gap:10px;
+  }
+  .big-metric .num{
+    font-family:'Bebas Neue',sans-serif;
+    font-size:64px;
+    line-height:1;
+    color:var(--accent);
+  }
+  .big-metric .label{
+    color:var(--muted);
+    font-size:13px;
+  }
+  .phase-pill{
+    display:inline-block;
+    margin-top:8px;
+    font-size:12.5px;
+    font-weight:600;
+    padding:4px 10px;
+    border-radius:20px;
+    background:var(--panel-2);
+    border:1px solid var(--border);
+    color:var(--text);
+  }
+
+  .feedback-list{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    min-height:24px;
+  }
+  .feedback-item{
+    display:flex;
+    align-items:flex-start;
+    gap:8px;
+    font-size:13.5px;
+    line-height:1.4;
+    padding:9px 10px;
+    border-radius:7px;
+    background:var(--panel-2);
+    border-left:3px solid var(--muted);
+  }
+  .feedback-item.good{border-left-color:var(--good);}
+  .feedback-item.warn{border-left-color:var(--warn);}
+  .feedback-item .dot{margin-top:4px;width:6px;height:6px;border-radius:50%;background:currentColor;flex:0 0 auto;}
+  .feedback-item.good{color:var(--good);}
+  .feedback-item.warn{color:var(--warn);}
+  .feedback-item.neutral{color:var(--text);}
+
+  .angle-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-size:13px;
+    padding:7px 0;
+    border-bottom:1px solid var(--border);
+  }
+  .angle-row:last-child{border-bottom:none;}
+  .angle-row .val{
+    font-family:'Bebas Neue',sans-serif;
+    font-size:18px;
+    color:var(--text);
+  }
+
+  .rep-log{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    max-height:150px;
+    overflow-y:auto;
+  }
+  .rep-log-item{
+    display:flex;
+    justify-content:space-between;
+    font-size:12.5px;
+    padding:6px 8px;
+    border-radius:6px;
+    background:var(--panel-2);
+  }
+  .rep-log-item .tag{font-weight:600;}
+  .rep-log-item.clean .tag{color:var(--good);}
+  .rep-log-item.issue .tag{color:var(--warn);}
+  .empty-note{color:var(--muted);font-size:12.5px;}
+
+  footer{
+    text-align:center;
+    color:var(--muted);
+    font-size:12px;
+    padding:14px 24px 22px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <h1>REP-RIGHT</h1>
+    <span>Exercise form analysis, processed locally</span>
+  </div>
+  <nav class="tabs" id="exerciseTabs">
+    <button class="active" data-ex="squat">Squat</button>
+    <button data-ex="pushup">Push-up</button>
+    <button data-ex="lunge">Lunge</button>
+    <button data-ex="plank">Plank</button>
+  </nav>
+</header>
+
+<main>
+  <section>
+    <div class="stage" id="stage">
+      <video id="video" playsinline muted></video>
+      <canvas id="canvas"></canvas>
+      <div class="overlay-msg" id="overlayMsg">
+        <h2>Get in frame, side-on to the camera</h2>
+        <ul>
+          <li>Ensure your entire body is in frame</li>
+          <li>Face sideways to the camera</li>
+          <li>Maintain even lighting, and avoid strong backlight</li>
+        </ul>
+        <button class="start-btn" id="startBtn">Start camera</button>
+      </div>
+    </div>
+    <div class="stage-footer">
+      <div class="status-line"><span class="status-dot" id="statusDot"></span><span id="statusText">Camera off</span></div>
+      <div class="ctrl-buttons">
+        <button id="resetBtn" disabled>Reset count</button>
+        <button id="stopBtn" disabled>Stop camera</button>
+      </div>
+    </div>
+  </section>
+
+  <aside>
+    <div class="card">
+      <h3 id="metricLabel">Reps</h3>
+      <div class="big-metric">
+        <div class="num" id="metricValue">0</div>
+        <div class="label" id="metricSub">Clean Reps: 0</div>
+      </div>
+      <div class="phase-pill" id="phasePill">Waiting for camera...</div>
+    </div>
+
+    <div class="card">
+      <h3>Live Feedback</h3>
+      <div class="feedback-list" id="feedbackList">
+        <div class="feedback-item neutral"><span class="dot"></span><span>Start the camera to begin analysis.</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Joint Angles</h3>
+      <div id="angleRows">
+        <div class="angle-row"><span>—</span><span class="val">—</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Rep history</h3>
+      <div class="rep-log" id="repLog">
+        <div class="empty-note">Completed reps will show here.</div>
+      </div>
+    </div>
+  </aside>
+</main>
+
+<footer>
+  Video is processed locally in your browser. No data is uploaded. Intended to provide general exercise form cues. Not a substitute for coaching or physical therapy. Avoid activities that may cause damage or physical injury.
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tensorflow/4.2.0/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.3/dist/pose-detection.min.js"></script>
+<script>
+(function(){
+  const video = document.getElementById('video');
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  const overlayMsg = document.getElementById('overlayMsg');
+  const startBtn = document.getElementById('startBtn');
+  const stopBtn = document.getElementById('stopBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const statusDot = document.getElementById('statusDot');
+  const statusText = document.getElementById('statusText');
+  const tabs = document.querySelectorAll('#exerciseTabs button');
+  const metricLabel = document.getElementById('metricLabel');
+  const metricValue = document.getElementById('metricValue');
+  const metricSub = document.getElementById('metricSub');
+  const phasePill = document.getElementById('phasePill');
+  const feedbackList = document.getElementById('feedbackList');
+  const angleRows = document.getElementById('angleRows');
+  const repLog = document.getElementById('repLog');
+
+  let detector = null;
+  let stream = null;
+  let running = false;
+  let busy = false;
+  let currentExercise = 'squat';
+
+  // ---------- smoothing helper ----------
+  function makeEMA(alpha){
+    let v = null;
+    return function(x){
+      if (x === null || Number.isNaN(x)) return v;
+      v = (v === null) ? x : (alpha * x + (1 - alpha) * v);
+      return v;
+    };
+  }
+
+  // ---------- geometry helpers ----------
+  function angleAt(A, B, C){
+    // angle at point B formed by rays B->A and B->C, in degrees
+    const v1x = A.x - B.x, v1y = A.y - B.y;
+    const v2x = C.x - B.x, v2y = C.y - B.y;
+    const dot = v1x*v2x + v1y*v2y;
+    const m1 = Math.hypot(v1x, v1y), m2 = Math.hypot(v2x, v2y);
+    if (m1 === 0 || m2 === 0) return null;
+    let cos = dot / (m1 * m2);
+    cos = Math.max(-1, Math.min(1, cos));
+    return Math.acos(cos) * 180 / Math.PI;
+  }
+  function angleFromVertical(A, B){
+    // angle of the line A->B from vertical (0 = perfectly upright), degrees
+    const dx = B.x - A.x, dy = B.y - A.y;
+    const rad = Math.atan2(Math.abs(dx), Math.abs(dy));
+    return rad * 180 / Math.PI;
+  }
+  function kp(pose, name){
+    const p = pose.keypoints.find(k => k.name === name);
+    return p && p.score > 0.25 ? p : null;
+  }
+  function avgScore(pts){
+    const valid = pts.filter(Boolean);
+    if (valid.length === 0) return 0;
+    return valid.reduce((s,p)=>s+p.score,0) / pts.length;
+  }
+
+  // ---------- exercise state ----------
+  const smoothers = {
+    primary: makeEMA(0.35),
+    torso: makeEMA(0.35),
+    hipLine: makeEMA(0.35)
+  };
+
+  let phase = 'up';          // 'up' | 'down'
+  let repCount = 0;
+  let goodRepCount = 0;
+  let phaseChangedAt = 0;
+  let minPrimaryThisRep = 999;
+  let repIssues = new Set();
+  let plankStartTime = null;
+  let plankGoodSeconds = 0;
+  let plankLastTick = null;
+
+  const CONFIG = {
+    squat:  { label:'Reps', down:110, up:158, goodDepth:100, mode:'rep' },
+    pushup: { label:'Reps', down:110, up:158, goodDepth:95,  mode:'rep' },
+    lunge:  { label:'Reps', down:118, up:158, goodDepth:100, mode:'rep' },
+    plank:  { label:'Hold time', mode:'hold' }
+  };
+
+  function resetCounters(){
+    phase = 'up';
+    repCount = 0;
+    goodRepCount = 0;
+    minPrimaryThisRep = 999;
+    repIssues.clear();
+    plankStartTime = null;
+    plankGoodSeconds = 0;
+    plankLastTick = null;
+    repLog.innerHTML = '<div class="empty-note">Completed reps will show up here.</div>';
+    updateMetricDisplay();
+  }
+
+  function updateMetricDisplay(){
+    const cfg = CONFIG[currentExercise];
+    metricLabel.textContent = cfg.label;
+    if (cfg.mode === 'rep'){
+      metricValue.textContent = repCount;
+      metricSub.textContent = 'Clean Reps: ' + goodRepCount;
+    } else {
+      const secs = Math.floor(plankGoodSeconds);
+      const mm = String(Math.floor(secs/60)).padStart(2,'0');
+      const ss = String(secs%60).padStart(2,'0');
+      metricValue.textContent = mm + ':' + ss;
+      metricSub.textContent = 'Time with Clean Form';
+    }
+  }
+
+  function setPhasePill(text){
+    phasePill.textContent = text;
+  }
+
+  function renderFeedback(items){
+    // items: [{type:'good'|'warn'|'neutral', text:string}]
+    feedbackList.innerHTML = '';
+    items.forEach(it=>{
+      const div = document.createElement('div');
+      div.className = 'feedback-item ' + it.type;
+      div.innerHTML = '<span class="dot"></span><span>' + it.text + '</span>';
+      feedbackList.appendChild(div);
+    });
+  }
+
+  function renderAngles(rows){
+    // rows: [{label, value}]
+    angleRows.innerHTML = '';
+    rows.forEach(r=>{
+      const div = document.createElement('div');
+      div.className = 'angle-row';
+      div.innerHTML = '<span>' + r.label + '</span><span class="val">' + r.value + '</span>';
+      angleRows.appendChild(div);
+    });
+  }
+
+  function logRep(issues){
+    const item = document.createElement('div');
+    const clean = issues.size === 0;
+    item.className = 'rep-log-item ' + (clean ? 'clean' : 'issue');
+    const label = clean ? 'Clean' : Array.from(issues).join(', ');
+    item.innerHTML = '<span>Rep ' + repCount + '</span><span class="tag">' + label + '</span>';
+    if (repLog.firstChild && repLog.firstChild.classList && repLog.firstChild.classList.contains('empty-note')){
+      repLog.innerHTML = '';
+    }
+    repLog.insertBefore(item, repLog.firstChild);
+    while (repLog.children.length > 6) repLog.removeChild(repLog.lastChild);
+  }
+
+  // ---------- side selection ----------
+  function pickSide(pose, joints){
+    // joints e.g. ['shoulder','hip','knee','ankle']
+    const left = joints.map(j => kp(pose, 'left_'+j));
+    const right = joints.map(j => kp(pose, 'right_'+j));
+    const leftScore = avgScore(left);
+    const rightScore = avgScore(right);
+    if (leftScore < 0.25 && rightScore < 0.25) return null;
+    return rightScore >= leftScore ? {side:'right', pts:right} : {side:'left', pts:left};
+  }
+
+  // ---------- per-exercise analysis ----------
+  function analyzeSquat(pose){
+    const sel = pickSide(pose, ['shoulder','hip','knee','ankle']);
+    if (!sel) return null;
+    const [shoulder, hip, knee, ankle] = sel.pts;
+    if (!shoulder || !hip || !knee || !ankle) return null;
+
+    const kneeAngle = angleAt(hip, knee, ankle);
+    const hipAngle = angleAt(shoulder, hip, knee);
+    const torsoLean = angleFromVertical(hip, shoulder);
+
+    const primary = smoothers.primary(kneeAngle);
+    const torso = smoothers.torso(torsoLean);
+
+    // knee valgus: compare knee-to-knee width vs ankle-to-ankle width
+    const lKnee = kp(pose,'left_knee'), rKnee = kp(pose,'right_knee');
+    const lAnkle = kp(pose,'left_ankle'), rAnkle = kp(pose,'right_ankle');
+    let valgus = false;
+    if (lKnee && rKnee && lAnkle && rAnkle){
+      const kneeGap = Math.abs(lKnee.x - rKnee.x);
+      const ankleGap = Math.abs(lAnkle.x - rAnkle.x);
+      if (ankleGap > 10 && kneeGap < ankleGap * 0.72 && phase === 'down') valgus = true;
+    }
+
+    const leaning = torso !== null && torso > 42;
+
+    const rows = [
+      {label:'Knee angle', value: Math.round(primary) + '°'},
+      {label:'Hip angle', value: Math.round(hipAngle) + '°'},
+      {label:'Torso lean', value: Math.round(torso) + '°'}
+    ];
+
+    return { primary, flags:{knees:valgus, back:leaning, hips:false}, rows,
+      buildFeedback(items){
+        if (valgus) items.push({type:'warn', text:'Knees are caving inward — press them out over your toes.'});
+        if (leaning) items.push({type:'warn', text:'Chest is dropping too far forward — keep it lifted.'});
+      },
+      depthOK(minVal){ return minVal <= CONFIG.squat.goodDepth; },
+      depthMsg: 'Shallow depth — try sitting your hips lower before standing back up.'
+    };
+  }
+
+  function analyzePushup(pose){
+    const sel = pickSide(pose, ['shoulder','elbow','wrist']);
+    const hipSel = pickSide(pose, ['shoulder','hip','ankle']);
+    if (!sel || !hipSel) return null;
+    const [shoulder, elbow, wrist] = sel.pts;
+    const [hShoulder, hip, ankle] = hipSel.pts;
+    if (!shoulder || !elbow || !wrist || !hShoulder || !hip || !ankle) return null;
+
+    const elbowAngle = angleAt(shoulder, elbow, wrist);
+    const primary = smoothers.primary(elbowAngle);
+
+    const hipAngle = angleAt(hShoulder, hip, ankle);
+    const hipLine = smoothers.hipLine(hipAngle);
+
+    // sag vs pike: compare hip.y to the line between shoulder and ankle at hip's x
+    const t = (hip.x - hShoulder.x) / ((ankle.x - hShoulder.x) || 1e-6);
+    const expectedY = hShoulder.y + t * (ankle.y - hShoulder.y);
+    const deviation = hip.y - expectedY; // positive = hip below line = sagging (image y grows downward)
+    let hipsFlag = false, sagText = null;
+    if (hipLine !== null && hipLine < 160){
+      hipsFlag = true;
+      sagText = deviation > 0
+        ? 'Hips are sagging — brace your core to keep a straight line.'
+        : 'Hips are piking up — lower them to keep a straight line.';
+    }
+
+    const rows = [
+      {label:'Elbow angle', value: Math.round(primary) + '°'},
+      {label:'Body line', value: Math.round(hipLine) + '°'}
+    ];
+
+    return { primary, flags:{knees:false, back:hipsFlag, hips:hipsFlag}, rows,
+      buildFeedback(items){
+        if (sagText) items.push({type:'warn', text:sagText});
+      },
+      depthOK(minVal){ return minVal <= CONFIG.pushup.goodDepth; },
+      depthMsg: 'Not quite low enough — bring your chest closer to the floor.'
+    };
+  }
+
+  function analyzeLunge(pose){
+    const left = ['shoulder','hip','knee','ankle'].map(j => kp(pose, 'left_'+j));
+    const right = ['shoulder','hip','knee','ankle'].map(j => kp(pose, 'right_'+j));
+    const leftOK = left.every(Boolean), rightOK = right.every(Boolean);
+    if (!leftOK && !rightOK) return null;
+
+    let front;
+    if (leftOK && rightOK){
+      const lKnee = angleAt(left[1], left[2], left[3]);
+      const rKnee = angleAt(right[1], right[2], right[3]);
+      front = lKnee <= rKnee ? {pts:left, angle:lKnee} : {pts:right, angle:rKnee};
+    } else {
+      const pts = leftOK ? left : right;
+      front = {pts, angle: angleAt(pts[1], pts[2], pts[3])};
+    }
+    const [shoulder, hip, knee, ankle] = front.pts;
+    const primary = smoothers.primary(front.angle);
+    const torso = smoothers.torso(angleFromVertical(hip, shoulder));
+
+    const kneePastToe = (knee.x - ankle.x) * (shoulder.x - hip.x >= 0 ? 1 : -1);
+    // Simplify: flag if knee is horizontally well beyond ankle in the direction of travel
+    const dx = Math.abs(knee.x - ankle.x);
+    const legLen = Math.abs(hip.y - ankle.y) || 1;
+    const overToe = phase === 'down' && (dx / legLen) > 0.35;
+
+    const leaning = torso !== null && torso > 35;
+
+    const rows = [
+      {label:'Front knee angle', value: Math.round(primary) + '°'},
+      {label:'Torso lean', value: Math.round(torso) + '°'}
+    ];
+
+    return { primary, flags:{knees:overToe, back:leaning, hips:false}, rows,
+      buildFeedback(items){
+        if (overToe) items.push({type:'warn', text:'Front knee is pushing past your toes — sit back slightly.'});
+        if (leaning) items.push({type:'warn', text:'Torso is leaning too far forward — stay more upright.'});
+      },
+      depthOK(minVal){ return minVal <= CONFIG.lunge.goodDepth; },
+      depthMsg: 'Lower a bit more — aim to bring your back knee closer to the ground.'
+    };
+  }
+
+  function analyzePlank(pose){
+    const sel = pickSide(pose, ['shoulder','hip','ankle']);
+    if (!sel) return null;
+    const [shoulder, hip, ankle] = sel.pts;
+    if (!shoulder || !hip || !ankle) return null;
+
+    const hipAngle = angleAt(shoulder, hip, ankle);
+    const hipLine = smoothers.hipLine(hipAngle);
+
+    const t = (hip.x - shoulder.x) / ((ankle.x - shoulder.x) || 1e-6);
+    const expectedY = shoulder.y + t * (ankle.y - shoulder.y);
+    const deviation = hip.y - expectedY;
+
+    let hipsFlag = false, msg = null;
+    if (hipLine !== null && hipLine < 162){
+      hipsFlag = true;
+      msg = deviation > 0
+        ? 'Hips are dropping — squeeze your glutes and core to lift them.'
+        : 'Hips are too high — lower them into a straight line.';
+    }
+
+    const rows = [{label:'Body line', value: Math.round(hipLine) + '°'}];
+
+    return { flags:{knees:false, back:hipsFlag, hips:hipsFlag}, rows, good: !hipsFlag,
+      buildFeedback(items){
+        if (msg) items.push({type:'warn', text:msg});
+        else items.push({type:'good', text:'Straight body line — great hold.'});
+      }
+    };
+  }
+
+  const ANALYZERS = { squat:analyzeSquat, pushup:analyzePushup, lunge:analyzeLunge, plank:analyzePlank };
+
+  // ---------- rep / hold state machine ----------
+  function processResult(result){
+    const cfg = CONFIG[currentExercise];
+    const now = performance.now();
+    const items = [];
+
+    if (!result){
+      renderFeedback([{type:'neutral', text:'Move into frame so your shoulder, hip, knee and ankle are all visible.'}]);
+      renderAngles([{label:'—', value:'—'}]);
+      setPhasePill('No person detected');
+      return;
+    }
+
+    renderAngles(result.rows);
+
+    if (cfg.mode === 'hold'){
+      if (result.good){
+        if (plankLastTick !== null) plankGoodSeconds += (now - plankLastTick) / 1000;
+        setPhasePill('Holding — good form');
+      } else {
+        setPhasePill('Holding — adjust hips');
+      }
+      plankLastTick = now;
+      result.buildFeedback(items);
+      renderFeedback(items);
+      updateMetricDisplay();
+      return;
+    }
+
+    // rep-based exercises
+    const primary = result.primary;
+    if (primary !== null){
+      if (phase === 'up' && primary < cfg.down){
+        phase = 'down';
+        phaseChangedAt = now;
+        minPrimaryThisRep = primary;
+        repIssues.clear();
+      } else if (phase === 'down'){
+        minPrimaryThisRep = Math.min(minPrimaryThisRep, primary);
+        if (primary > cfg.up && (now - phaseChangedAt) > 180){
+          // rep completed
+          if (!result.depthOK(minPrimaryThisRep)) repIssues.add('shallow');
+          phase = 'up';
+          repCount += 1;
+          const clean = repIssues.size === 0 && !result.flags.knees && !result.flags.back;
+          if (clean) goodRepCount += 1;
+          logRep(repIssues);
+          updateMetricDisplay();
+        }
+      }
+    }
+
+    setPhasePill(phase === 'down' ? 'Descending / bottom' : 'Standing / top');
+
+    result.buildFeedback(items);
+    if (phase === 'down' && !result.depthOK(minPrimaryThisRep) && minPrimaryThisRep < 999){
+      // only a soft hint while still moving, real check happens at rep completion
+    }
+    if (items.length === 0){
+      items.push({type:'good', text: phase === 'down' ? 'Good control on the way down — keep it up.' : 'Form looks solid. Ready for the next rep.'});
+    }
+    renderFeedback(items);
+  }
+
+  // ---------- drawing ----------
+  const CONNECTIONS = [
+    ['left_shoulder','right_shoulder'],
+    ['left_shoulder','left_elbow'],['left_elbow','left_wrist'],
+    ['right_shoulder','right_elbow'],['right_elbow','right_wrist'],
+    ['left_shoulder','left_hip'],['right_shoulder','right_hip'],
+    ['left_hip','right_hip'],
+    ['left_hip','left_knee'],['left_knee','left_ankle'],
+    ['right_hip','right_knee'],['right_knee','right_ankle']
+  ];
+  const WARN_JOINTS = {
+    knees: ['left_knee','right_knee'],
+    back: ['left_hip','right_hip','left_shoulder','right_shoulder'],
+    hips: ['left_hip','right_hip']
+  };
+
+  function drawSkeleton(pose, flags){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    if (!pose) return;
+    const flagged = new Set();
+    if (flags){
+      Object.keys(flags).forEach(f=>{
+        if (flags[f]) WARN_JOINTS[f].forEach(j=>flagged.add(j));
+      });
+    }
+
+    ctx.lineWidth = 3;
+    CONNECTIONS.forEach(([a,b])=>{
+      const pa = kp(pose,a), pb = kp(pose,b);
+      if (!pa || !pb) return;
+      const warnLine = flagged.has(a) && flagged.has(b);
+      ctx.strokeStyle = warnLine ? '#e8335f' : 'rgba(229,117,31,0.7)';
+      ctx.beginPath();
+      ctx.moveTo(pa.x, pa.y);
+      ctx.lineTo(pb.x, pb.y);
+      ctx.stroke();
+    });
+
+    pose.keypoints.forEach(p=>{
+      if (p.score < 0.3) return;
+      ctx.fillStyle = flagged.has(p.name) ? '#e8335f' : '#E5751F';
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, flagged.has(p.name) ? 7 : 5, 0, 2*Math.PI);
+      ctx.fill();
+    });
+  }
+
+  // ---------- main loop ----------
+  async function loop(){
+    if (!running) return;
+    if (!busy && video.readyState >= 2){
+      busy = true;
+      try{
+        const poses = await detector.estimatePoses(video, { flipHorizontal:false });
+        const pose = poses && poses[0] && poses[0].score > 0.15 ? poses[0] : null;
+        let result = null;
+        if (pose) result = ANALYZERS[currentExercise](pose);
+        drawSkeleton(pose, result ? result.flags : null);
+        processResult(result);
+      } catch(e){
+        console.error(e);
+      }
+      busy = false;
+    }
+    requestAnimationFrame(loop);
+  }
+
+  // ---------- setup ----------
+  async function startCamera(){
+    startBtn.disabled = true;
+    startBtn.textContent = 'Loading model…';
+    try{
+      stream = await navigator.mediaDevices.getUserMedia({ video:{ width:960, height:720, facingMode:'user' }, audio:false });
+      video.srcObject = stream;
+      await new Promise(res=>{ video.onloadedmetadata = ()=>{ video.play(); res(); }; });
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+
+      if (!detector){
+        await tf.setBackend('webgl');
+        await tf.ready();
+        detector = await poseDetection.createDetector(poseDetection.SupportedModels.MoveNet, {
+          modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING
+        });
+      }
+
+      overlayMsg.style.display = 'none';
+      stopBtn.disabled = false;
+      resetBtn.disabled = false;
+      statusDot.classList.add('live');
+      statusText.textContent = 'Live — analyzing ' + currentExercise;
+      running = true;
+      plankLastTick = performance.now();
+      loop();
+    } catch(err){
+      console.error(err);
+      startBtn.disabled = false;
+      startBtn.textContent = 'Start camera';
+      statusText.textContent = 'Camera error: ' + (err.message || 'permission denied');
+      alert('Could not access the camera. Check that this page has permission to use your webcam, then try again.');
+    }
+  }
+
+  function stopCamera(){
+    running = false;
+    if (stream) stream.getTracks().forEach(t=>t.stop());
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    overlayMsg.style.display = 'flex';
+    startBtn.disabled = false;
+    startBtn.textContent = 'Start camera';
+    stopBtn.disabled = true;
+    resetBtn.disabled = true;
+    statusDot.classList.remove('live');
+    statusText.textContent = 'Camera off';
+    setPhasePill('Camera stopped');
+  }
+
+  startBtn.addEventListener('click', startCamera);
+  stopBtn.addEventListener('click', stopCamera);
+  resetBtn.addEventListener('click', resetCounters);
+
+  tabs.forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      tabs.forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      currentExercise = btn.dataset.ex;
+      resetCounters();
+      statusText.textContent = running ? ('Live — analyzing ' + currentExercise) : 'Camera off';
+    });
+  });
+
+  updateMetricDisplay();
+})();
+</script>
+</body>
+</html>
